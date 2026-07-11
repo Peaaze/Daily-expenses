@@ -6,7 +6,7 @@
 <title>Daily Expenses</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
 <style>
   :root{
     --radius:14px;
@@ -31,6 +31,7 @@
     --cat-others:#3A405A;
     --selected-date-bg:#0A3B36;
     --selected-date-text:#8FE0DB;
+    --icon-badge-bg:rgba(255,255,255,0.7);
   }
 
   /* ===== DARK THEME (nebula) ===== */
@@ -52,6 +53,7 @@
     --selected-date-bg:#E8B84B;
     --selected-date-text:#3A2A0A;
     --nebula-glow:rgba(90,110,150,0.55);
+    --icon-badge-bg:rgba(255,255,255,0.16);
   }
 
   *{box-sizing:border-box;}
@@ -117,7 +119,7 @@
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     border:0.5px solid var(--glass-border);
     border-radius:12px;
-    padding:11px 14px;
+    padding:8px 8px 8px 14px;
     font-size:12px;font-weight:500;
     color:var(--text-primary);
     text-transform:uppercase;
@@ -125,6 +127,7 @@
     cursor:pointer;
     position:relative;
   }
+  .field.no-icon{padding:11px 14px;}
   .field input, .field select{
     background:none;border:none;outline:none;
     font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
@@ -132,6 +135,12 @@
     width:100%;padding:0;
   }
   .field input::placeholder{color:var(--text-secondary);opacity:0.7;text-transform:uppercase;}
+  .field-icon-badge{
+    width:28px;height:28px;flex-shrink:0;
+    background:var(--icon-badge-bg);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+  }
   .field-icon{font-size:15px;color:var(--text-secondary);}
 
   .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:-1px;}
@@ -297,23 +306,23 @@
   <div class="form-stack">
 
     <div class="field" id="dateField" onclick="toggleCalendar()">
-      <span id="dateFieldLabel">SELECT DATE</span>
-      <i class="ti ti-calendar field-icon"></i>
+      <span id="dateFieldLabel">DATE</span>
+      <span class="field-icon-badge"><i class="ti ti-calendar field-icon"></i></span>
       <div class="calendar-popover" id="calendarPopover"></div>
     </div>
 
-    <div class="field">
+    <div class="field no-icon">
       <input type="text" id="descInput" placeholder="Description" list="descList">
       <datalist id="descList"></datalist>
     </div>
 
     <div class="field" id="categoryField" onclick="toggleCategoryDropdown()">
-      <span id="categoryFieldLabel" style="display:flex;align-items:center;">SELECT CATEGORY</span>
-      <i class="ti ti-chevron-down field-icon"></i>
+      <span id="categoryFieldLabel" style="display:flex;align-items:center;">CATEGORY</span>
+      <span class="field-icon-badge"><i class="ti ti-chevron-down field-icon"></i></span>
       <div class="cat-dropdown" id="categoryDropdown"></div>
     </div>
 
-    <div class="field">
+    <div class="field no-icon">
       <input type="number" id="amountInput" placeholder="Amount" inputmode="decimal">
     </div>
 
@@ -657,7 +666,7 @@ function clearForm(){
   document.getElementById("descInput").value = "";
   document.getElementById("amountInput").value = "";
   selectedCategory = null;
-  document.getElementById("categoryFieldLabel").textContent = "SELECT CATEGORY";
+  document.getElementById("categoryFieldLabel").textContent = "CATEGORY";
   selectedDate = new Date();
   updateDateFieldLabel();
 }
