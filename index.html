@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Daily Expenses</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --radius:14px;
+    --radius-sm:10px;
+  }
+
+  /* ===== LIGHT THEME (mint water) ===== */
+  [data-theme="light"]{
+    --page-bg-1:#A9EAE5;
+    --page-bg-2:#7FD9D2;
+    --page-bg-3:#63C7BF;
+    --glass-bg:rgba(255,255,255,0.40);
+    --glass-bg-strong:rgba(255,255,255,0.55);
+    --glass-border:rgba(255,255,255,0.5);
+    --text-primary:#0A3B36;
+    --text-secondary:#146860;
+    --star-color:255,255,255;
+    --cat-food:#F7E1D7;
+    --cat-transport:#AEC5EB;
+    --cat-entertainment:#EDAFB8;
+    --cat-shopping:#2C6975;
+    --cat-others:#3A405A;
+    --selected-date-bg:#0A3B36;
+    --selected-date-text:#8FE0DB;
+  }
+
+  /* ===== DARK THEME (nebula) ===== */
+  [data-theme="dark"]{
+    --page-bg-1:#0A0B10;
+    --page-bg-2:#0A0B10;
+    --page-bg-3:#0A0B10;
+    --glass-bg:rgba(255,255,255,0.06);
+    --glass-bg-strong:rgba(255,255,255,0.16);
+    --glass-border:rgba(255,255,255,0.12);
+    --text-primary:#F2F2F2;
+    --text-secondary:#9A9A9A;
+    --star-color:255,255,255;
+    --cat-food:#E8B84B;
+    --cat-transport:#6FA8DC;
+    --cat-entertainment:#D46FA8;
+    --cat-shopping:#4FD1C5;
+    --cat-others:#9B7EDE;
+    --selected-date-bg:#E8B84B;
+    --selected-date-text:#3A2A0A;
+    --nebula-glow:rgba(90,110,150,0.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 220px 160px at 25% 15%, rgba(70,95,130,0.28), transparent 65%),
+      radial-gradient(ellipse 200px 260px at 80% 45%, rgba(60,85,120,0.24), transparent 65%),
+      radial-gradient(ellipse 220px 180px at 20% 80%, rgba(65,90,125,0.22), transparent 65%),
+      linear-gradient(160deg, var(--page-bg-1), var(--page-bg-2) 60%, var(--page-bg-3));
+    color:var(--text-primary);
+    position:relative;
+    overflow-x:hidden;
+  }
+  [data-theme="light"] body{
+    background:
+      radial-gradient(ellipse 200px 140px at 20% 10%, rgba(255,255,255,0.5), transparent 65%),
+      radial-gradient(ellipse 160px 200px at 85% 35%, rgba(220,250,247,0.4), transparent 65%),
+      radial-gradient(ellipse 220px 160px at 25% 70%, rgba(255,255,255,0.35), transparent 65%),
+      linear-gradient(160deg, var(--page-bg-1), var(--page-bg-2) 60%, var(--page-bg-3));
+  }
+
+  #stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+  .star{position:absolute;border-radius:50%;background:rgb(var(--star-color));}
+
+  .wrap{max-width:420px;margin:0 auto;padding:20px 16px 100px;position:relative;z-index:1;}
+
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .profile{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-primary);}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--glass-bg-strong);object-fit:cover;}
+  .theme-toggle{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--glass-bg);border:0.5px solid var(--glass-border);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:var(--text-primary);font-size:16px;
+  }
+
+  .card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:0.5px solid var(--glass-border);
+    border-radius:var(--radius);
+    padding:14px;
+  }
+
+  .total-card{text-align:center;margin-bottom:16px;}
+  .total-label{font-size:10px;letter-spacing:0.06em;color:var(--text-secondary);text-transform:uppercase;}
+  .total-amount{font-size:24px;font-weight:600;color:var(--text-primary);margin-top:2px;}
+
+  .section-label{
+    font-size:10px;letter-spacing:0.08em;font-weight:600;
+    color:var(--text-secondary);text-transform:uppercase;
+    margin-bottom:8px;margin-top:20px;
+  }
+  .section-label:first-of-type{margin-top:0;}
+
+  .form-stack{display:flex;flex-direction:column;gap:8px;}
+  .field{
+    background:var(--glass-bg);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:0.5px solid var(--glass-border);
+    border-radius:12px;
+    padding:11px 14px;
+    font-size:12px;font-weight:500;
+    color:var(--text-primary);
+    text-transform:uppercase;
+    display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;
+    position:relative;
+  }
+  .field input, .field select{
+    background:none;border:none;outline:none;
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+    color:var(--text-primary);text-transform:uppercase;
+    width:100%;padding:0;
+  }
+  .field input::placeholder{color:var(--text-secondary);opacity:0.7;text-transform:uppercase;}
+  .field-icon{font-size:15px;color:var(--text-secondary);}
+
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:-1px;}
+  .dot-glow-food{background:var(--cat-food);box-shadow:0 0 8px 3px rgba(232,184,75,0.5);}
+  .dot-glow-transport{background:var(--cat-transport);box-shadow:0 0 8px 3px rgba(111,168,220,0.5);}
+  .dot-glow-entertainment{background:var(--cat-entertainment);box-shadow:0 0 8px 3px rgba(212,111,168,0.5);}
+  .dot-glow-shopping{background:var(--cat-shopping);box-shadow:0 0 8px 3px rgba(79,209,197,0.5);}
+  .dot-glow-others{background:var(--cat-others);box-shadow:0 0 8px 3px rgba(155,126,222,0.5);}
+  [data-theme="light"] .dot-glow-food{box-shadow:0 0 8px 3px rgba(247,225,215,0.9);}
+  [data-theme="light"] .dot-glow-transport{box-shadow:0 0 8px 3px rgba(174,197,235,0.9);}
+  [data-theme="light"] .dot-glow-entertainment{box-shadow:0 0 8px 3px rgba(237,175,184,0.9);}
+  [data-theme="light"] .dot-glow-shopping{box-shadow:0 0 8px 3px rgba(44,105,117,0.7);}
+  [data-theme="light"] .dot-glow-others{box-shadow:0 0 8px 3px rgba(58,64,90,0.7);}
+
+  .btn{
+    border-radius:12px;padding:11px 14px;font-size:12px;font-weight:600;
+    text-align:center;text-transform:uppercase;cursor:pointer;border:none;
+    font-family:'Inter',sans-serif;
+  }
+  .btn-add{
+    background:var(--glass-bg-strong);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:0.5px solid var(--glass-border);
+    color:var(--text-primary);
+    width:100%;
+  }
+
+  .cat-dropdown{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;
+    background:var(--glass-bg-strong);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:0.5px solid var(--glass-border);
+    border-radius:12px;padding:6px;z-index:20;
+    display:none;
+  }
+  .cat-dropdown.open{display:block;}
+  .cat-option{
+    display:flex;align-items:center;padding:9px 10px;border-radius:8px;
+    font-size:12px;color:var(--text-primary);cursor:pointer;text-transform:none;
+  }
+  .cat-option:hover{background:rgba(255,255,255,0.08);}
+
+  .calendar-popover{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;
+    background:var(--glass-bg-strong);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:0.5px solid var(--glass-border);
+    border-radius:14px;padding:14px;display:none;
+  }
+  .calendar-popover.open{display:block;}
+  .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .cal-header span{font-size:13px;font-weight:600;color:var(--text-primary);}
+  .cal-nav{cursor:pointer;font-size:16px;color:var(--text-primary);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow{font-size:10px;color:var(--text-secondary);text-align:center;}
+  .cal-day{font-size:11px;font-weight:400;color:var(--text-primary);text-align:center;padding:6px 0;cursor:pointer;border-radius:50%;}
+  .cal-day.empty{cursor:default;}
+  .cal-day.selected{
+    background:var(--selected-date-bg);
+    color:var(--selected-date-text);
+    box-shadow:0 0 8px 3px var(--nebula-glow, rgba(10,59,54,0.5));
+  }
+
+  .date-group-header{
+    background:var(--glass-bg);
+    border-radius:10px;padding:8px 12px;
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:2px;font-size:11px;font-weight:600;color:var(--text-primary);
+  }
+  .date-group-header span.pct{font-size:10px;font-weight:400;color:var(--text-secondary);}
+  .expense-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 12px;font-size:12px;color:var(--text-primary);cursor:pointer;
+  }
+  .expense-row .left{display:flex;align-items:center;gap:8px;}
+  .expense-row .right{display:flex;align-items:center;gap:8px;}
+  .trash-icon{cursor:pointer;color:#C0492F;font-size:15px;}
+
+  .stacked-bar{
+    display:flex;width:100%;height:12px;border-radius:6px;overflow:hidden;margin-bottom:10px;
+  }
+  [data-theme="dark"] .stacked-bar{box-shadow:0 0 14px 4px var(--nebula-glow);}
+  .cat-legend-row{
+    display:flex;justify-content:space-between;padding:2px;font-size:12px;
+    color:var(--text-primary);margin-bottom:6px;
+  }
+  .cat-legend-row .amt{color:var(--text-secondary);}
+
+  .empty-state{font-size:12px;color:var(--text-secondary);text-align:center;padding:20px 0;}
+
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body data-theme="light">
+
+<div id="stars"></div>
+
+<div class="wrap">
+
+  <div class="header-row">
+    <div class="profile">
+      <img class="avatar" id="lineAvatar" src="" style="display:none;">
+      <span id="lineName"></span>
+    </div>
+    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+      <i class="ti ti-moon" id="themeIcon"></i>
+    </div>
+  </div>
+
+  <div class="card total-card">
+    <div class="total-label">Total spent</div>
+    <div class="total-amount" id="totalAmount">฿0</div>
+  </div>
+
+  <div class="section-label">Add expense</div>
+  <div class="form-stack">
+
+    <div class="field" id="dateField" onclick="toggleCalendar()">
+      <span id="dateFieldLabel">SELECT DATE</span>
+      <i class="ti ti-calendar field-icon"></i>
+      <div class="calendar-popover" id="calendarPopover"></div>
+    </div>
+
+    <div class="field">
+      <input type="text" id="descInput" placeholder="Description" list="descList">
+      <datalist id="descList"></datalist>
+    </div>
+
+    <div class="field" id="categoryField" onclick="toggleCategoryDropdown()">
+      <span id="categoryFieldLabel" style="display:flex;align-items:center;">SELECT CATEGORY</span>
+      <i class="ti ti-chevron-down field-icon"></i>
+      <div class="cat-dropdown" id="categoryDropdown"></div>
+    </div>
+
+    <div class="field">
+      <input type="number" id="amountInput" placeholder="Amount" inputmode="decimal">
+    </div>
+
+    <button class="btn btn-add" id="addBtn" onclick="handleAddOrUpdate()">+ Add</button>
+  </div>
+
+  <div class="section-label">Summary by date</div>
+  <div id="summaryByDate"></div>
+
+  <div class="section-label">Summary by category</div>
+  <div id="summaryByCategory"></div>
+
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+const LIFF_ID = "2010670798-T4bwXcnB";
+const STORAGE_KEY = "dailyExpenses.v1";
+const CATEGORIES = [
+  {id:"food",         name:"Food & Drink",   dotClass:"dot-glow-food",          color:"var(--cat-food)"},
+  {id:"transport",    name:"Transportation", dotClass:"dot-glow-transport",     color:"var(--cat-transport)"},
+  {id:"entertainment",name:"Entertainment",  dotClass:"dot-glow-entertainment", color:"var(--cat-entertainment)"},
+  {id:"shopping",     name:"Shopping",       dotClass:"dot-glow-shopping",      color:"var(--cat-shopping)"},
+  {id:"others",       name:"Others",         dotClass:"dot-glow-others",       color:"var(--cat-others)"}
+];
+
+/* ============ STATE ============ */
+let expenses = [];
+let selectedDate = new Date();
+let calMonthCursor = new Date();
+let selectedCategory = null;
+let editingId = null;
+
+/* ============ INIT ============ */
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    expenses = raw ? JSON.parse(raw) : [];
+  }catch(e){ expenses = []; }
+}
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+}
+
+function initTheme(){
+  const saved = localStorage.getItem("dailyExpenses.theme") || "light";
+  document.body.setAttribute("data-theme", saved);
+  document.getElementById("themeIcon").className = saved === "light" ? "ti ti-moon" : "ti ti-sun";
+  buildStars();
+}
+function toggleTheme(){
+  const cur = document.body.getAttribute("data-theme");
+  const next = cur === "light" ? "dark" : "light";
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("dailyExpenses.theme", next);
+  document.getElementById("themeIcon").className = next === "light" ? "ti ti-moon" : "ti ti-sun";
+  buildStars();
+}
+
+function buildStars(){
+  const el = document.getElementById("stars");
+  el.innerHTML = "";
+  const count = 18;
+  for(let i=0;i<count;i++){
+    const s = document.createElement("div");
+    s.className = "star";
+    const size = [1,1,2,2,3][Math.floor(Math.random()*5)];
+    s.style.width = size+"px";
+    s.style.height = size+"px";
+    s.style.top = Math.random()*100+"vh";
+    s.style.left = Math.random()*100+"vw";
+    const glowSize = size>=3?6:size>=2?5:4;
+    const opacity = size>=3?0.8:size>=2?0.6:0.45;
+    s.style.boxShadow = "0 0 "+glowSize+"px "+Math.ceil(glowSize/2)+"px rgba(255,255,255,"+opacity+")";
+    el.appendChild(s);
+  }
+}
+
+/* ============ LIFF ============ */
+function initLiff(){
+  if(typeof liff === "undefined") return;
+  liff.init({liffId: LIFF_ID}).then(function(){
+    if(!liff.isLoggedIn()){
+      liff.login({redirectUri: location.href});
+      return null;
+    }
+    return liff.getProfile();
+  }).then(function(p){
+    if(!p) return;
+    document.getElementById("lineAvatar").src = p.pictureUrl || "";
+    document.getElementById("lineAvatar").style.display = "block";
+    document.getElementById("lineName").textContent = p.displayName || "";
+  }).catch(function(err){
+    console.warn("LIFF init error:", err);
+  });
+}
+
+/* ============ CALENDAR ============ */
+const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+const DOW = ["S","M","T","W","T","F","S"];
+
+function toggleCalendar(e){
+  if(e) e.stopPropagation();
+  const pop = document.getElementById("calendarPopover");
+  const wasOpen = pop.classList.contains("open");
+  closeAllPopovers();
+  if(!wasOpen){
+    calMonthCursor = new Date(selectedDate);
+    renderCalendar();
+    pop.classList.add("open");
+  }
+}
+
+function renderCalendar(){
+  const pop = document.getElementById("calendarPopover");
+  const year = calMonthCursor.getFullYear();
+  const month = calMonthCursor.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  let html = '<div class="cal-header">';
+  html += '<span class="cal-nav" onclick="event.stopPropagation();changeMonth(-1)"><i class="ti ti-chevron-left"></i></span>';
+  html += '<span>'+MONTH_NAMES[month]+' '+year+'</span>';
+  html += '<span class="cal-nav" onclick="event.stopPropagation();changeMonth(1)"><i class="ti ti-chevron-right"></i></span>';
+  html += '</div><div class="cal-grid">';
+  DOW.forEach(function(d){ html += '<span class="cal-dow">'+d+'</span>'; });
+
+  for(let i=0;i<firstDay;i++){ html += '<span class="cal-day empty"></span>'; }
+  for(let d=1; d<=daysInMonth; d++){
+    const isSelected = selectedDate.getFullYear()===year && selectedDate.getMonth()===month && selectedDate.getDate()===d;
+    html += '<span class="cal-day'+(isSelected?' selected':'')+'" onclick="event.stopPropagation();pickDate('+year+','+month+','+d+')">'+d+'</span>';
+  }
+  html += '</div>';
+  pop.innerHTML = html;
+}
+function changeMonth(delta){
+  calMonthCursor.setMonth(calMonthCursor.getMonth()+delta);
+  renderCalendar();
+}
+function pickDate(year, month, day){
+  selectedDate = new Date(year, month, day);
+  updateDateFieldLabel();
+  document.getElementById("calendarPopover").classList.remove("open");
+}
+function updateDateFieldLabel(){
+  const d = selectedDate;
+  const label = d.getDate()+" "+MONTH_NAMES[d.getMonth()]+" "+d.getFullYear();
+  document.getElementById("dateFieldLabel").textContent = label;
+}
+function formatDateKey(d){
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function formatDateDisplay(dateKey){
+  const parts = dateKey.split("-");
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  return d.getDate()+" "+MONTH_NAMES[d.getMonth()]+" "+d.getFullYear();
+}
+
+/* ============ CATEGORY DROPDOWN ============ */
+function toggleCategoryDropdown(e){
+  if(e) e.stopPropagation();
+  const dd = document.getElementById("categoryDropdown");
+  const wasOpen = dd.classList.contains("open");
+  closeAllPopovers();
+  if(!wasOpen){
+    renderCategoryDropdown();
+    dd.classList.add("open");
+  }
+}
+function renderCategoryDropdown(){
+  const dd = document.getElementById("categoryDropdown");
+  let html = "";
+  CATEGORIES.forEach(function(c){
+    html += '<div class="cat-option" onclick="event.stopPropagation();pickCategory(\''+c.id+'\')">'+
+            '<span class="dot '+c.dotClass+'"></span>'+c.name+'</div>';
+  });
+  dd.innerHTML = html;
+}
+function pickCategory(catId){
+  selectedCategory = catId;
+  const cat = CATEGORIES.find(function(c){ return c.id===catId; });
+  document.getElementById("categoryFieldLabel").innerHTML =
+    '<span class="dot '+cat.dotClass+'"></span>'+cat.name.toUpperCase();
+  document.getElementById("categoryDropdown").classList.remove("open");
+}
+
+function closeAllPopovers(){
+  document.getElementById("calendarPopover").classList.remove("open");
+  document.getElementById("categoryDropdown").classList.remove("open");
+}
+document.addEventListener("click", closeAllPopovers);
+
+/* ============ ADD / UPDATE / DELETE ============ */
+function handleAddOrUpdate(){
+  const desc = document.getElementById("descInput").value.trim();
+  const amount = parseFloat(document.getElementById("amountInput").value);
+
+  if(!desc){ alert("Enter a description."); return; }
+  if(!selectedCategory){ alert("Select a category."); return; }
+  if(!amount || amount <= 0){ alert("Enter a valid amount."); return; }
+
+  const dateKey = formatDateKey(selectedDate);
+
+  if(editingId){
+    const idx = expenses.findIndex(function(x){ return x.id===editingId; });
+    if(idx>-1){
+      expenses[idx] = {id: editingId, date: dateKey, desc: desc, category: selectedCategory, amount: amount};
+    }
+    editingId = null;
+    document.getElementById("addBtn").textContent = "+ Add";
+  } else {
+    expenses.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2),
+      date: dateKey, desc: desc, category: selectedCategory, amount: amount
+    });
+  }
+
+  saveData();
+  clearForm();
+  renderAll();
+}
+
+function clearForm(){
+  document.getElementById("descInput").value = "";
+  document.getElementById("amountInput").value = "";
+  selectedCategory = null;
+  document.getElementById("categoryFieldLabel").textContent = "SELECT CATEGORY";
+  selectedDate = new Date();
+  updateDateFieldLabel();
+}
+
+function loadIntoForm(id){
+  const exp = expenses.find(function(x){ return x.id===id; });
+  if(!exp) return;
+  editingId = id;
+  const parts = exp.date.split("-");
+  selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  updateDateFieldLabel();
+  document.getElementById("descInput").value = exp.desc;
+  document.getElementById("amountInput").value = exp.amount;
+  pickCategory(exp.category);
+  document.getElementById("addBtn").textContent = "Update";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function deleteExpense(id, evt){
+  if(evt) evt.stopPropagation();
+  expenses = expenses.filter(function(x){ return x.id!==id; });
+  saveData();
+  if(editingId===id){
+    editingId = null;
+    clearForm();
+    document.getElementById("addBtn").textContent = "+ Add";
+  }
+  renderAll();
+}
+
+/* ============ RENDER ============ */
+function renderAll(){
+  renderTotal();
+  renderSummaryByDate();
+  renderSummaryByCategory();
+  renderDescList();
+}
+
+function renderTotal(){
+  const total = expenses.reduce(function(s,e){ return s+e.amount; }, 0);
+  document.getElementById("totalAmount").textContent = "฿"+total.toLocaleString(undefined,{maximumFractionDigits:2});
+}
+
+function renderDescList(){
+  const dl = document.getElementById("descList");
+  const uniq = Array.from(new Set(expenses.map(function(e){ return e.desc; })));
+  dl.innerHTML = uniq.map(function(d){ return '<option value="'+d.replace(/"/g,"")+'">'; }).join("");
+}
+
+function renderSummaryByDate(){
+  const el = document.getElementById("summaryByDate");
+  if(expenses.length===0){
+    el.innerHTML = '<div class="empty-state">No expenses yet.</div>';
+    return;
+  }
+  const total = expenses.reduce(function(s,e){ return s+e.amount; }, 0);
+  const byDate = {};
+  expenses.forEach(function(e){
+    if(!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+  const dates = Object.keys(byDate).sort().reverse();
+
+  let html = "";
+  dates.forEach(function(dateKey){
+    const items = byDate[dateKey];
+    const dateTotal = items.reduce(function(s,e){ return s+e.amount; }, 0);
+    const pct = total>0 ? Math.round((dateTotal/total)*100) : 0;
+    html += '<div class="date-group-header"><span>'+formatDateDisplay(dateKey)+'</span>'+
+            '<span class="pct">฿'+dateTotal.toLocaleString()+' · '+pct+'%</span></div>';
+    items.forEach(function(e){
+      const cat = CATEGORIES.find(function(c){ return c.id===e.category; });
+      html += '<div class="expense-row" onclick="loadIntoForm(\''+e.id+'\')">'+
+              '<span class="left"><span class="dot '+(cat?cat.dotClass:"")+'"></span>'+e.desc+'</span>'+
+              '<span class="right">฿'+e.amount.toLocaleString()+
+              '<i class="ti ti-trash trash-icon" onclick="deleteExpense(\''+e.id+'\', event)"></i></span>'+
+              '</div>';
+    });
+  });
+  el.innerHTML = html;
+}
+
+function renderSummaryByCategory(){
+  const el = document.getElementById("summaryByCategory");
+  if(expenses.length===0){
+    el.innerHTML = '<div class="empty-state">No expenses yet.</div>';
+    return;
+  }
+  const total = expenses.reduce(function(s,e){ return s+e.amount; }, 0);
+  const sums = {};
+  expenses.forEach(function(e){
+    sums[e.category] = (sums[e.category]||0) + e.amount;
+  });
+  const rows = CATEGORIES
+    .map(function(c){ return {cat:c, amount: sums[c.id]||0}; })
+    .filter(function(r){ return r.amount>0; })
+    .sort(function(a,b){ return b.amount-a.amount; });
+
+  let barHtml = '<div class="stacked-bar">';
+  rows.forEach(function(r){
+    const pct = total>0 ? (r.amount/total)*100 : 0;
+    barHtml += '<div style="width:'+pct+'%;background:'+r.cat.color+';"></div>';
+  });
+  barHtml += '</div>';
+
+  let legendHtml = "";
+  rows.forEach(function(r){
+    const pct = total>0 ? Math.round((r.amount/total)*100) : 0;
+    legendHtml += '<div class="cat-legend-row"><span><span class="dot '+r.cat.dotClass+'"></span>'+
+      r.cat.name.toUpperCase()+'</span><span class="amt">฿'+r.amount.toLocaleString()+' · '+pct+'%</span></div>';
+  });
+
+  el.innerHTML = barHtml + legendHtml;
+}
+
+/* ============ BOOT ============ */
+document.addEventListener("DOMContentLoaded", function(){
+  loadData();
+  initTheme();
+  updateDateFieldLabel();
+  renderAll();
+  initLiff();
+});
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+</body>
+</html>
