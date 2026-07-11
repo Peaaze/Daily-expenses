@@ -224,7 +224,12 @@
   .cal-nav{cursor:pointer;font-size:16px;color:var(--text-primary);}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
   .cal-dow{font-size:10px;color:var(--text-secondary);text-align:center;}
-  .cal-day{font-size:11px;font-weight:400;color:var(--text-primary);text-align:center;padding:6px 0;cursor:pointer;border-radius:50%;}
+  .cal-day{
+    font-size:11px;font-weight:400;color:var(--text-primary);
+    display:flex;align-items:center;justify-content:center;
+    aspect-ratio:1;width:100%;
+    cursor:pointer;border-radius:50%;
+  }
   .cal-day.empty{cursor:default;}
   .cal-day.selected{
     background:var(--selected-date-bg);
@@ -243,9 +248,10 @@
     display:flex;justify-content:space-between;align-items:center;
     background:var(--glass-bg-strong);
     border:0.5px solid var(--glass-border);
+    box-shadow:0 2px 6px rgba(10,59,54,0.12);
     border-radius:999px;
     padding:9px 16px;font-size:12px;color:var(--text-primary);cursor:pointer;
-    margin-bottom:4px;
+    margin-bottom:8px;
     text-transform:uppercase;
   }
   .expense-row .left{display:flex;align-items:center;gap:8px;}
@@ -255,7 +261,7 @@
   .stacked-bar{
     display:flex;width:100%;height:12px;border-radius:6px;overflow:hidden;margin-bottom:10px;
   }
-  .stacked-bar > div{transition:none;}
+  .stacked-bar > div{transition:width 0.7s cubic-bezier(0.22,1,0.36,1);}
   .cat-legend-row{
     display:flex;justify-content:space-between;padding:2px;font-size:12px;
     color:var(--text-primary);margin-bottom:6px;
@@ -983,7 +989,7 @@ function renderSummaryByCategory(){
   let barHtml = '<div class="stacked-bar">';
   rows.forEach(function(r){
     const pct = total>0 ? (r.amount/total)*100 : 0;
-    barHtml += '<div style="width:'+pct+'%;background:'+r.cat.color+';"></div>';
+    barHtml += '<div data-pct="'+pct+'" style="width:0%;background:'+r.cat.color+';"></div>';
   });
   barHtml += '</div>';
 
@@ -995,6 +1001,14 @@ function renderSummaryByCategory(){
   });
 
   el.innerHTML = barHtml + legendHtml;
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      el.querySelectorAll(".stacked-bar > div").forEach(function(seg){
+        seg.style.width = seg.getAttribute("data-pct") + "%";
+      });
+    });
+  });
 }
 
 /* ============ BOOT ============ */
