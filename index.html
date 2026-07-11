@@ -273,6 +273,17 @@
     font-weight:600;color:var(--text-primary);text-transform:uppercase;
     cursor:pointer;margin-top:8px;
   }
+  .list-input-row{
+    background:var(--glass-bg);border:0.5px dashed var(--glass-border);
+    border-radius:12px;padding:10px 14px;margin-top:8px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .list-input-row input{
+    background:none;border:none;outline:none;flex:1;
+    font-family:'Inter',sans-serif;font-size:13px;color:var(--text-primary);
+  }
+  .list-input-row input::placeholder{color:var(--text-secondary);opacity:0.7;}
+  .list-input-row i{cursor:pointer;font-size:16px;color:var(--text-secondary);margin-left:10px;}
 
   ::-webkit-scrollbar{display:none;}
 </style>
@@ -341,7 +352,7 @@
   <div class="list-sheet" onclick="event.stopPropagation()">
     <div class="list-sheet-label">Expense lists</div>
     <div id="listRows"></div>
-    <div class="new-list-btn" onclick="createNewList()">+ New expense</div>
+    <div id="newListArea"></div>
   </div>
 </div>
 
@@ -364,6 +375,8 @@ let selectedDate = new Date();
 let calMonthCursor = new Date();
 let selectedCategory = null;
 let editingId = null;
+let renamingListId = null;
+let creatingNewList = false;
 
 function newId(){
   return Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -439,11 +452,15 @@ function updateListPillLabel(){
 }
 
 function openListSheet(){
+  renamingListId = null;
+  creatingNewList = false;
   renderListSheet();
   document.getElementById("sheetBackdrop").classList.add("open");
 }
 function closeListSheet(){
   document.getElementById("sheetBackdrop").classList.remove("open");
+  renamingListId = null;
+  creatingNewList = false;
 }
 function closeListSheetOnBackdrop(evt){
   if(evt.target.id === "sheetBackdrop") closeListSheet();
@@ -454,14 +471,85 @@ function renderListSheet(){
   let html = "";
   store.lists.forEach(function(l){
     const isActive = l.id === store.activeId;
+
+    if(renamingListId === l.id){
+      html += '<div class="list-input-row">'+
+              '<input type="text" id="renameInput" value="'+l.name.replace(/"/g,"")+'" autofocus onkeydown="if(event.key===\'Enter\')confirmRename(\''+l.id+'\')">'+
+              '<i class="ti ti-check" onclick="confirmRename(\''+l.id+'\')"></i>'+
+              '</div>';
+      return;
+    }
+
+    const leadIcon = isActive
+      ? '<i class="ti ti-check" style="margin-right:8px;"></i>'
+      : '<i class="ti ti-map-pin" style="margin-right:8px;color:var(--text-secondary);"></i>';
+
     html += '<div class="list-row'+(isActive?' active':'')+'" onclick="switchList(\''+l.id+'\')">'+
-            '<span class="name">'+(isActive?'<i class="ti ti-check"></i> ':'')+l.name+'</span>'+
+            '<span class="name">'+leadIcon+l.name+'</span>'+
             '<span class="actions">'+
-            '<i class="ti ti-edit" onclick="event.stopPropagation();renameList(\''+l.id+'\')"></i>'+
+            '<i class="ti ti-edit" onclick="event.stopPropagation();startRenameList(\''+l.id+'\')"></i>'+
             '<i class="ti ti-trash trash-icon" onclick="event.stopPropagation();deleteList(\''+l.id+'\')"></i>'+
             '</span></div>';
   });
   el.innerHTML = html;
+
+  const renameEl = document.getElementById("renameInput");
+  if(renameEl){ renameEl.focus(); renameEl.select(); }
+
+  renderNewListArea();
+}
+
+function renderNewListArea(){
+  const el = document.getElementById("newListArea");
+  if(creatingNewList){
+    el.innerHTML = '<div class="list-input-row">'+
+      '<input type="text" id="newListInput" placeholder="New expense name" onkeydown="if(event.key===\'Enter\')confirmNewList()">'+
+      '<i class="ti ti-check" onclick="confirmNewList()"></i>'+
+      '</div>';
+    const inputEl = document.getElementById("newListInput");
+    if(inputEl) inputEl.focus();
+  } else {
+    el.innerHTML = '<div class="new-list-btn" onclick="startNewList()">+ New expense</div>';
+  }
+}
+
+function startNewList(){
+  creatingNewList = true;
+  renamingListId = null;
+  renderListSheet();
+}
+
+function startRenameList(id){
+  renamingListId = id;
+  creatingNewList = false;
+  renderListSheet();
+}
+
+function confirmNewList(){
+  const inputEl = document.getElementById("newListInput");
+  const name = inputEl ? inputEl.value.trim() : "";
+  if(!name) return;
+  const list = {id: newId(), name: name, expenses: []};
+  store.lists.push(list);
+  store.activeId = list.id;
+  creatingNewList = false;
+  saveData();
+  updateListPillLabel();
+  closeListSheet();
+  clearForm();
+  renderAll();
+}
+
+function confirmRename(id){
+  const inputEl = document.getElementById("renameInput");
+  const name = inputEl ? inputEl.value.trim() : "";
+  if(!name) return;
+  const list = store.lists.find(function(l){ return l.id===id; });
+  if(list){ list.name = name; }
+  renamingListId = null;
+  saveData();
+  updateListPillLabel();
+  renderListSheet();
 }
 
 function switchList(id){
@@ -471,30 +559,6 @@ function switchList(id){
   closeListSheet();
   clearForm();
   renderAll();
-}
-
-function createNewList(){
-  const name = prompt("Name this expense list:");
-  if(!name || !name.trim()) return;
-  const list = {id: newId(), name: name.trim(), expenses: []};
-  store.lists.push(list);
-  store.activeId = list.id;
-  saveData();
-  updateListPillLabel();
-  closeListSheet();
-  clearForm();
-  renderAll();
-}
-
-function renameList(id){
-  const list = store.lists.find(function(l){ return l.id===id; });
-  if(!list) return;
-  const name = prompt("Rename this expense list:", list.name);
-  if(!name || !name.trim()) return;
-  list.name = name.trim();
-  saveData();
-  updateListPillLabel();
-  renderListSheet();
 }
 
 function deleteList(id){
