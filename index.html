@@ -259,9 +259,11 @@
   .trash-icon{cursor:pointer;color:#C0492F;font-size:15px;}
 
   .stacked-bar{
-    display:flex;width:100%;height:12px;border-radius:6px;overflow:hidden;margin-bottom:10px;
+    display:flex;width:100%;height:12px;border-radius:6px;margin-bottom:10px;
   }
-  .stacked-bar > div{transition:width 0.7s cubic-bezier(0.22,1,0.36,1);}
+  .stacked-bar > div{transition:width 0.7s cubic-bezier(0.22,1,0.36,1), box-shadow 0.7s ease;}
+  .stacked-bar > div:first-child{border-top-left-radius:6px;border-bottom-left-radius:6px;}
+  .stacked-bar > div:last-child{border-top-right-radius:6px;border-bottom-right-radius:6px;}
   .cat-legend-row{
     display:flex;justify-content:space-between;padding:2px;font-size:12px;
     color:var(--text-primary);margin-bottom:6px;
@@ -989,7 +991,7 @@ function renderSummaryByCategory(){
   let barHtml = '<div class="stacked-bar">';
   rows.forEach(function(r){
     const pct = total>0 ? (r.amount/total)*100 : 0;
-    barHtml += '<div data-pct="'+pct+'" style="width:0%;background:'+r.cat.color+';"></div>';
+    barHtml += '<div class="'+r.cat.dotClass+'" data-pct="'+pct+'" style="width:0%;background:'+r.cat.color+';box-shadow:none;"></div>';
   });
   barHtml += '</div>';
 
@@ -1006,6 +1008,7 @@ function renderSummaryByCategory(){
     requestAnimationFrame(function(){
       el.querySelectorAll(".stacked-bar > div").forEach(function(seg){
         seg.style.width = seg.getAttribute("data-pct") + "%";
+        seg.style.boxShadow = "";
       });
     });
   });
