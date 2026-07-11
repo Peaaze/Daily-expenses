@@ -6,6 +6,7 @@
 <title>Daily Expenses</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
 <style>
   :root{
     --radius:14px;
@@ -221,6 +222,49 @@
 
   .empty-state{font-size:12px;color:var(--text-secondary);text-align:center;padding:20px 0;}
 
+  .list-pill{
+    background:var(--glass-bg);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:0.5px solid var(--glass-border);
+    border-radius:14px;padding:9px 14px;text-align:center;
+    font-size:11px;font-weight:600;color:var(--text-primary);
+    text-transform:uppercase;margin-bottom:14px;cursor:pointer;
+  }
+
+  .sheet-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,0.35);
+    z-index:50;display:none;align-items:flex-end;justify-content:center;
+  }
+  .sheet-backdrop.open{display:flex;}
+  .list-sheet{
+    width:100%;max-width:420px;
+    background:var(--glass-bg-strong);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:0.5px solid var(--glass-border);
+    border-radius:18px 18px 0 0;
+    padding:18px 16px 24px;
+  }
+  .list-sheet-label{
+    font-size:10px;letter-spacing:0.08em;font-weight:600;
+    color:var(--text-secondary);text-transform:uppercase;margin-bottom:10px;
+  }
+  .list-row{
+    background:var(--glass-bg);border-radius:12px;padding:12px 14px;
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:6px;font-size:13px;color:var(--text-primary);cursor:pointer;
+  }
+  .list-row.active{background:var(--glass-bg-strong);}
+  .list-row .name{display:flex;align-items:center;gap:8px;}
+  .list-row .actions{display:flex;gap:14px;color:var(--text-secondary);}
+  .list-row .actions i{cursor:pointer;font-size:15px;}
+  .list-row .actions i.trash-icon{color:#C0492F;}
+  .new-list-btn{
+    background:var(--glass-bg);border:0.5px dashed var(--glass-border);
+    border-radius:12px;padding:12px;text-align:center;font-size:12px;
+    font-weight:600;color:var(--text-primary);text-transform:uppercase;
+    cursor:pointer;margin-top:8px;
+  }
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -238,6 +282,10 @@
     <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
       <i class="ti ti-moon" id="themeIcon"></i>
     </div>
+  </div>
+
+  <div class="list-pill" id="listPill" onclick="openListSheet()">
+    <span id="listPillLabel">EXPENSES</span> <i class="ti ti-chevron-down" style="font-size:12px;"></i>
   </div>
 
   <div class="card total-card">
@@ -280,10 +328,19 @@
 
 </div>
 
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeListSheetOnBackdrop(event)">
+  <div class="list-sheet" onclick="event.stopPropagation()">
+    <div class="list-sheet-label">Expense lists</div>
+    <div id="listRows"></div>
+    <div class="new-list-btn" onclick="createNewList()">+ New expense</div>
+  </div>
+</div>
+
 <script>
 /* ============ CONFIG ============ */
 const LIFF_ID = "2010670798-T4bwXcnB";
-const STORAGE_KEY = "dailyExpenses.v1";
+const STORAGE_KEY = "dailyExpenses.lists.v1";
+const OLD_STORAGE_KEY = "dailyExpenses.v1";
 const CATEGORIES = [
   {id:"food",         name:"Food & Drink",   dotClass:"dot-glow-food",          color:"var(--cat-food)"},
   {id:"transport",    name:"Transportation", dotClass:"dot-glow-transport",     color:"var(--cat-transport)"},
@@ -293,22 +350,44 @@ const CATEGORIES = [
 ];
 
 /* ============ STATE ============ */
-let expenses = [];
+let store = {lists:[], activeId:null};
 let selectedDate = new Date();
 let calMonthCursor = new Date();
 let selectedCategory = null;
 let editingId = null;
 
-/* ============ INIT ============ */
+function newId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2);
+}
+
+/* ============ INIT / MIGRATION ============ */
 function loadData(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    expenses = raw ? JSON.parse(raw) : [];
-  }catch(e){ expenses = []; }
+    if(raw){
+      store = JSON.parse(raw);
+      return;
+    }
+  }catch(e){}
+
+  const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+  let oldExpenses = [];
+  try{ oldExpenses = oldRaw ? JSON.parse(oldRaw) : []; }catch(e){ oldExpenses = []; }
+
+  store = {
+    lists: [{id: newId(), name: "Expenses", expenses: oldExpenses}],
+    activeId: null
+  };
+  store.activeId = store.lists[0].id;
+  saveData();
 }
 function saveData(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
+function getActiveList(){
+  return store.lists.find(function(l){ return l.id===store.activeId; }) || store.lists[0];
+}
+
 
 function initTheme(){
   const saved = localStorage.getItem("dailyExpenses.theme") || "light";
@@ -342,6 +421,91 @@ function buildStars(){
     s.style.boxShadow = "0 0 "+glowSize+"px "+Math.ceil(glowSize/2)+"px rgba(255,255,255,"+opacity+")";
     el.appendChild(s);
   }
+}
+
+/* ============ LIST SWITCHER ============ */
+function updateListPillLabel(){
+  const active = getActiveList();
+  document.getElementById("listPillLabel").textContent = active ? active.name.toUpperCase() : "EXPENSES";
+}
+
+function openListSheet(){
+  renderListSheet();
+  document.getElementById("sheetBackdrop").classList.add("open");
+}
+function closeListSheet(){
+  document.getElementById("sheetBackdrop").classList.remove("open");
+}
+function closeListSheetOnBackdrop(evt){
+  if(evt.target.id === "sheetBackdrop") closeListSheet();
+}
+
+function renderListSheet(){
+  const el = document.getElementById("listRows");
+  let html = "";
+  store.lists.forEach(function(l){
+    const isActive = l.id === store.activeId;
+    html += '<div class="list-row'+(isActive?' active':'')+'" onclick="switchList(\''+l.id+'\')">'+
+            '<span class="name">'+(isActive?'<i class="ti ti-check"></i> ':'')+l.name+'</span>'+
+            '<span class="actions">'+
+            '<i class="ti ti-edit" onclick="event.stopPropagation();renameList(\''+l.id+'\')"></i>'+
+            '<i class="ti ti-trash trash-icon" onclick="event.stopPropagation();deleteList(\''+l.id+'\')"></i>'+
+            '</span></div>';
+  });
+  el.innerHTML = html;
+}
+
+function switchList(id){
+  store.activeId = id;
+  saveData();
+  updateListPillLabel();
+  closeListSheet();
+  clearForm();
+  renderAll();
+}
+
+function createNewList(){
+  const name = prompt("Name this expense list:");
+  if(!name || !name.trim()) return;
+  const list = {id: newId(), name: name.trim(), expenses: []};
+  store.lists.push(list);
+  store.activeId = list.id;
+  saveData();
+  updateListPillLabel();
+  closeListSheet();
+  clearForm();
+  renderAll();
+}
+
+function renameList(id){
+  const list = store.lists.find(function(l){ return l.id===id; });
+  if(!list) return;
+  const name = prompt("Rename this expense list:", list.name);
+  if(!name || !name.trim()) return;
+  list.name = name.trim();
+  saveData();
+  updateListPillLabel();
+  renderListSheet();
+}
+
+function deleteList(id){
+  if(store.lists.length <= 1){
+    alert("You need at least one expense list.");
+    return;
+  }
+  const list = store.lists.find(function(l){ return l.id===id; });
+  if(!list) return;
+  const ok = confirm('Delete "'+list.name+'" and all its expenses? This can\'t be undone.');
+  if(!ok) return;
+  store.lists = store.lists.filter(function(l){ return l.id!==id; });
+  if(store.activeId === id){
+    store.activeId = store.lists[0].id;
+  }
+  saveData();
+  updateListPillLabel();
+  closeListSheet();
+  clearForm();
+  renderAll();
 }
 
 /* ============ LIFF ============ */
@@ -468,17 +632,18 @@ function handleAddOrUpdate(){
   if(!amount || amount <= 0){ alert("Enter a valid amount."); return; }
 
   const dateKey = formatDateKey(selectedDate);
+  const list = getActiveList();
 
   if(editingId){
-    const idx = expenses.findIndex(function(x){ return x.id===editingId; });
+    const idx = list.expenses.findIndex(function(x){ return x.id===editingId; });
     if(idx>-1){
-      expenses[idx] = {id: editingId, date: dateKey, desc: desc, category: selectedCategory, amount: amount};
+      list.expenses[idx] = {id: editingId, date: dateKey, desc: desc, category: selectedCategory, amount: amount};
     }
     editingId = null;
     document.getElementById("addBtn").textContent = "+ Add";
   } else {
-    expenses.push({
-      id: Date.now().toString(36)+Math.random().toString(36).slice(2),
+    list.expenses.push({
+      id: newId(),
       date: dateKey, desc: desc, category: selectedCategory, amount: amount
     });
   }
@@ -498,7 +663,7 @@ function clearForm(){
 }
 
 function loadIntoForm(id){
-  const exp = expenses.find(function(x){ return x.id===id; });
+  const exp = getActiveList().expenses.find(function(x){ return x.id===id; });
   if(!exp) return;
   editingId = id;
   const parts = exp.date.split("-");
@@ -513,7 +678,8 @@ function loadIntoForm(id){
 
 function deleteExpense(id, evt){
   if(evt) evt.stopPropagation();
-  expenses = expenses.filter(function(x){ return x.id!==id; });
+  const list = getActiveList();
+  list.expenses = list.expenses.filter(function(x){ return x.id!==id; });
   saveData();
   if(editingId===id){
     editingId = null;
@@ -532,18 +698,19 @@ function renderAll(){
 }
 
 function renderTotal(){
-  const total = expenses.reduce(function(s,e){ return s+e.amount; }, 0);
+  const total = getActiveList().expenses.reduce(function(s,e){ return s+e.amount; }, 0);
   document.getElementById("totalAmount").textContent = "฿"+total.toLocaleString(undefined,{maximumFractionDigits:2});
 }
 
 function renderDescList(){
   const dl = document.getElementById("descList");
-  const uniq = Array.from(new Set(expenses.map(function(e){ return e.desc; })));
+  const uniq = Array.from(new Set(getActiveList().expenses.map(function(e){ return e.desc; })));
   dl.innerHTML = uniq.map(function(d){ return '<option value="'+d.replace(/"/g,"")+'">'; }).join("");
 }
 
 function renderSummaryByDate(){
   const el = document.getElementById("summaryByDate");
+  const expenses = getActiveList().expenses;
   if(expenses.length===0){
     el.innerHTML = '<div class="empty-state">No expenses yet.</div>';
     return;
@@ -577,6 +744,7 @@ function renderSummaryByDate(){
 
 function renderSummaryByCategory(){
   const el = document.getElementById("summaryByCategory");
+  const expenses = getActiveList().expenses;
   if(expenses.length===0){
     el.innerHTML = '<div class="empty-state">No expenses yet.</div>';
     return;
@@ -613,10 +781,10 @@ document.addEventListener("DOMContentLoaded", function(){
   loadData();
   initTheme();
   updateDateFieldLabel();
+  updateListPillLabel();
   renderAll();
   initLiff();
 });
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
 </body>
 </html>
