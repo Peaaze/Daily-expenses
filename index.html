@@ -152,7 +152,9 @@
     display:flex;justify-content:space-between;align-items:center;
     cursor:pointer;
     position:relative;
+    z-index:1;
   }
+  .field.elevated{z-index:40;}
   .field input, .field select{
     background:none;border:none;outline:none;
     font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
@@ -163,6 +165,11 @@
   .field-icon{font-size:15px;color:var(--text-secondary);}
   input[list]::-webkit-calendar-picker-indicator{display:none !important;}
   input[list]::-webkit-list-button{display:none !important;}
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0;
+  }
+  input[type="number"]{-moz-appearance:textfield;appearance:textfield;}
 
   .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:-1px;}
   .dot-glow-food{background:var(--cat-food);box-shadow:0 0 8px 3px rgba(232,184,75,0.5);}
@@ -190,13 +197,11 @@
   }
 
   .cat-dropdown{
-    position:absolute;top:calc(100% + 4px);left:0;right:0;
+    position:absolute;z-index:30;
     background:var(--popover-solid-bg);
-    backdrop-filter:none;-webkit-backdrop-filter:none;
-    isolation:isolate;
     border:0.5px solid var(--glass-border);
     box-shadow:var(--popover-shadow);
-    border-radius:24px;padding:8px;z-index:30;
+    border-radius:24px;padding:8px;
     display:none;
   }
   .cat-dropdown.open{display:block;}
@@ -207,10 +212,8 @@
   .cat-option:hover{background:rgba(255,255,255,0.08);}
 
   .calendar-popover{
-    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;
+    position:absolute;z-index:30;
     background:var(--popover-solid-bg);
-    backdrop-filter:none;-webkit-backdrop-filter:none;
-    isolation:isolate;
     border:0.5px solid var(--glass-border);
     box-shadow:var(--popover-shadow);
     border-radius:14px;padding:14px;display:none;
@@ -385,29 +388,28 @@
     <div class="field" id="dateField" onclick="toggleCalendar(event)">
       <span id="dateFieldLabel">DATE</span>
       <i class="ti ti-calendar field-icon"></i>
-      <div class="calendar-popover" id="calendarPopover"></div>
     </div>
 
-    <div class="field">
+    <div class="field no-icon">
       <input type="text" id="descInput" placeholder="Description" list="descList">
-      <i class="ti ti-note field-icon"></i>
       <datalist id="descList"></datalist>
     </div>
 
     <div class="field" id="categoryField" onclick="toggleCategoryDropdown(event)">
       <span id="categoryFieldLabel" style="display:flex;align-items:center;">CATEGORY</span>
       <i class="ti ti-chevron-down field-icon"></i>
-      <div class="cat-dropdown" id="categoryDropdown"></div>
     </div>
 
-    <div class="field">
+    <div class="field no-icon">
       <input type="number" id="amountInput" placeholder="Amount" inputmode="decimal">
-      <i class="ti ti-currency-baht field-icon"></i>
     </div>
 
     <button class="btn btn-add" id="addBtn" onclick="handleAddOrUpdate()">+ Add</button>
     <div class="form-error" id="formError"></div>
   </div>
+
+  <div class="calendar-popover" id="calendarPopover" onclick="event.stopPropagation()"></div>
+  <div class="cat-dropdown" id="categoryDropdown" onclick="event.stopPropagation()"></div>
 
   <div class="section-label">Summary by date</div>
   <div id="summaryByDate"></div>
@@ -692,6 +694,15 @@ function initLiff(){
 const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 const DOW = ["S","M","T","W","T","F","S"];
 
+function positionPopover(popover, anchor){
+  const wrap = document.querySelector(".wrap");
+  const wrapRect = wrap.getBoundingClientRect();
+  const anchorRect = anchor.getBoundingClientRect();
+  popover.style.top = (anchorRect.bottom - wrapRect.top + 4) + "px";
+  popover.style.left = (anchorRect.left - wrapRect.left) + "px";
+  popover.style.width = anchorRect.width + "px";
+}
+
 function toggleCalendar(e){
   if(e) e.stopPropagation();
   const pop = document.getElementById("calendarPopover");
@@ -700,7 +711,9 @@ function toggleCalendar(e){
   if(!wasOpen){
     calMonthCursor = new Date(selectedDate);
     renderCalendar();
+    positionPopover(pop, document.getElementById("dateField"));
     pop.classList.add("open");
+    document.getElementById("dateField").classList.add("elevated");
   }
 }
 
@@ -734,6 +747,7 @@ function pickDate(year, month, day){
   selectedDate = new Date(year, month, day);
   updateDateFieldLabel();
   document.getElementById("calendarPopover").classList.remove("open");
+  document.getElementById("dateField").classList.remove("elevated");
 }
 function updateDateFieldLabel(){
   const d = selectedDate;
@@ -757,7 +771,9 @@ function toggleCategoryDropdown(e){
   closeAllPopovers();
   if(!wasOpen){
     renderCategoryDropdown();
+    positionPopover(dd, document.getElementById("categoryField"));
     dd.classList.add("open");
+    document.getElementById("categoryField").classList.add("elevated");
   }
 }
 function renderCategoryDropdown(){
@@ -775,11 +791,14 @@ function pickCategory(catId){
   document.getElementById("categoryFieldLabel").innerHTML =
     '<span class="dot '+cat.dotClass+'"></span>'+cat.name.toUpperCase();
   document.getElementById("categoryDropdown").classList.remove("open");
+  document.getElementById("categoryField").classList.remove("elevated");
 }
 
 function closeAllPopovers(){
   document.getElementById("calendarPopover").classList.remove("open");
   document.getElementById("categoryDropdown").classList.remove("open");
+  document.getElementById("dateField").classList.remove("elevated");
+  document.getElementById("categoryField").classList.remove("elevated");
 }
 document.addEventListener("click", closeAllPopovers);
 
