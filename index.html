@@ -32,6 +32,9 @@
     --selected-date-bg:#0A3B36;
     --selected-date-text:#8FE0DB;
     --icon-badge-bg:rgba(255,255,255,0.7);
+    --toggle-knob-bg:#2C6975;
+    --toggle-knob-glow:rgba(44,105,117,0.7);
+    --toggle-knob-icon:#D9F2EF;
   }
 
   /* ===== DARK THEME (nebula) ===== */
@@ -54,6 +57,9 @@
     --selected-date-text:#3A2A0A;
     --nebula-glow:rgba(90,110,150,0.55);
     --icon-badge-bg:rgba(255,255,255,0.16);
+    --toggle-knob-bg:#4FD1C5;
+    --toggle-knob-glow:rgba(79,209,197,0.6);
+    --toggle-knob-icon:#0A2E2A;
   }
 
   *{box-sizing:border-box;}
@@ -87,12 +93,28 @@
   .profile{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-primary);}
   .avatar{width:26px;height:26px;border-radius:50%;background:var(--glass-bg-strong);object-fit:cover;}
   .theme-toggle{
-    width:36px;height:36px;border-radius:50%;
+    width:64px;height:32px;flex-shrink:0;
     background:var(--glass-bg);border:0.5px solid var(--glass-border);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    display:flex;align-items:center;justify-content:center;cursor:pointer;
-    color:var(--text-primary);font-size:16px;
+    border-radius:16px;position:relative;cursor:pointer;
+    display:flex;align-items:center;padding:2px;
   }
+  .theme-toggle .toggle-knob{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--toggle-knob-bg);
+    box-shadow:0 0 8px 3px var(--toggle-knob-glow);
+    transition:transform 0.25s ease;
+    font-size:15px;color:var(--toggle-knob-icon);
+  }
+  [data-theme="dark"] .theme-toggle .toggle-knob{transform:translateX(32px);}
+  .theme-toggle .toggle-icon-static{
+    position:absolute;font-size:14px;color:var(--text-secondary);opacity:0.4;
+  }
+  .theme-toggle .toggle-icon-static.sun{left:9px;}
+  .theme-toggle .toggle-icon-static.moon{right:9px;}
+  [data-theme="light"] .theme-toggle .toggle-icon-static.sun{display:none;}
+  [data-theme="dark"] .theme-toggle .toggle-icon-static.moon{display:none;}
 
   .card{
     background:var(--glass-bg);
@@ -254,6 +276,7 @@
     background:var(--glass-bg);border-radius:12px;padding:12px 14px;
     display:flex;justify-content:space-between;align-items:center;
     margin-bottom:6px;font-size:13px;color:var(--text-primary);cursor:pointer;
+    text-transform:uppercase;
   }
   .list-row.active{background:var(--glass-bg-strong);}
   .list-row .name{display:flex;align-items:center;gap:8px;}
@@ -274,6 +297,7 @@
   .list-input-row input{
     background:none;border:none;outline:none;flex:1;
     font-family:'Inter',sans-serif;font-size:13px;color:var(--text-primary);
+    text-transform:uppercase;
   }
   .list-input-row input::placeholder{color:var(--text-secondary);opacity:0.7;}
   .list-input-row i{cursor:pointer;font-size:16px;color:var(--text-secondary);margin-left:10px;}
@@ -293,7 +317,11 @@
       <span id="lineName"></span>
     </div>
     <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
-      <i class="ti ti-moon" id="themeIcon"></i>
+      <i class="ti ti-sun toggle-icon-static sun"></i>
+      <div class="toggle-knob" id="toggleKnob">
+        <i class="ti" id="themeIcon"></i>
+      </div>
+      <i class="ti ti-moon toggle-icon-static moon"></i>
     </div>
   </div>
 
@@ -407,7 +435,7 @@ function getActiveList(){
 function initTheme(){
   const saved = localStorage.getItem("dailyExpenses.theme") || "light";
   document.body.setAttribute("data-theme", saved);
-  document.getElementById("themeIcon").className = saved === "light" ? "ti ti-moon" : "ti ti-sun";
+  document.getElementById("themeIcon").className = saved === "light" ? "ti ti-sun" : "ti ti-moon";
   buildStars();
 }
 function toggleTheme(){
@@ -415,7 +443,7 @@ function toggleTheme(){
   const next = cur === "light" ? "dark" : "light";
   document.body.setAttribute("data-theme", next);
   localStorage.setItem("dailyExpenses.theme", next);
-  document.getElementById("themeIcon").className = next === "light" ? "ti ti-moon" : "ti ti-sun";
+  document.getElementById("themeIcon").className = next === "light" ? "ti ti-sun" : "ti ti-moon";
   buildStars();
 }
 
