@@ -35,6 +35,8 @@
     --toggle-knob-bg:#2C6975;
     --toggle-knob-glow:rgba(44,105,117,0.7);
     --toggle-knob-icon:#D9F2EF;
+    --popover-solid-bg:#EAF8F5;
+    --popover-shadow:0 4px 16px rgba(10,59,54,0.15);
   }
 
   /* ===== DARK THEME (nebula) ===== */
@@ -60,6 +62,8 @@
     --toggle-knob-bg:#4FD1C5;
     --toggle-knob-glow:rgba(79,209,197,0.6);
     --toggle-knob-icon:#0A2E2A;
+    --popover-solid-bg:#1B2333;
+    --popover-shadow:0 4px 20px rgba(0,0,0,0.5);
   }
 
   *{box-sizing:border-box;}
@@ -185,9 +189,9 @@
 
   .cat-dropdown{
     position:absolute;top:calc(100% + 4px);left:0;right:0;
-    background:var(--glass-bg-strong);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    background:var(--popover-solid-bg);
     border:0.5px solid var(--glass-border);
+    box-shadow:var(--popover-shadow);
     border-radius:12px;padding:6px;z-index:20;
     display:none;
   }
@@ -200,9 +204,9 @@
 
   .calendar-popover{
     position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;
-    background:var(--glass-bg-strong);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    background:var(--popover-solid-bg);
     border:0.5px solid var(--glass-border);
+    box-shadow:var(--popover-shadow);
     border-radius:14px;padding:14px;display:none;
   }
   .calendar-popover.open{display:block;}
@@ -262,9 +266,9 @@
   .sheet-backdrop.open{display:flex;}
   .list-sheet{
     width:100%;max-width:420px;
-    background:var(--glass-bg-strong);
-    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    background:var(--popover-solid-bg);
     border:0.5px solid var(--glass-border);
+    box-shadow:var(--popover-shadow);
     border-radius:18px 18px 0 0;
     padding:18px 16px 24px;
   }
@@ -301,6 +305,36 @@
   }
   .list-input-row input::placeholder{color:var(--text-secondary);opacity:0.7;}
   .list-input-row i{cursor:pointer;font-size:16px;color:var(--text-secondary);margin-left:10px;}
+
+  .confirm-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,0.4);
+    z-index:60;display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  .confirm-backdrop.open{display:flex;}
+  .confirm-dialog{
+    background:var(--popover-solid-bg);
+    border:2px solid var(--glass-border);
+    border-radius:18px;padding:22px 20px;max-width:280px;text-align:center;
+  }
+  .confirm-icon{
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(224,90,60,0.16);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+  }
+  .confirm-icon i{font-size:20px;color:#C0492F;}
+  .confirm-title{font-size:14px;font-weight:600;color:var(--text-primary);text-transform:uppercase;margin-bottom:4px;}
+  .confirm-name{font-size:13px;font-weight:600;color:var(--text-primary);text-transform:uppercase;margin-bottom:10px;}
+  .confirm-body{font-size:11px;color:var(--text-secondary);text-transform:uppercase;line-height:1.5;margin-bottom:18px;}
+  .confirm-actions{display:flex;gap:10px;}
+  .confirm-btn{flex:1;border-radius:10px;padding:10px;font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;border:none;font-family:'Inter',sans-serif;}
+  .confirm-btn.cancel{background:var(--glass-bg-strong);border:0.5px solid var(--glass-border);color:var(--text-primary);}
+  .confirm-btn.danger{background:#C0492F;color:var(--popover-solid-bg);}
+
+  .form-error{
+    font-size:11px;color:#C0492F;text-transform:uppercase;
+    text-align:center;padding:6px 0 0;display:none;
+  }
+  .form-error.show{display:block;}
 
   ::-webkit-scrollbar{display:none;}
 </style>
@@ -359,6 +393,7 @@
     </div>
 
     <button class="btn btn-add" id="addBtn" onclick="handleAddOrUpdate()">+ Add</button>
+    <div class="form-error" id="formError"></div>
   </div>
 
   <div class="section-label">Summary by date</div>
@@ -374,6 +409,19 @@
     <div class="list-sheet-label">Expense lists</div>
     <div id="listRows"></div>
     <div id="newListArea"></div>
+  </div>
+</div>
+
+<div class="confirm-backdrop" id="confirmBackdrop">
+  <div class="confirm-dialog">
+    <div class="confirm-icon"><i class="ti ti-trash"></i></div>
+    <div class="confirm-title" id="confirmTitle">Delete expense list?</div>
+    <div class="confirm-name" id="confirmName"></div>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn cancel" id="confirmCancelBtn">Cancel</button>
+      <button class="confirm-btn danger" id="confirmOkBtn">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -584,22 +632,28 @@ function switchList(id){
 
 function deleteList(id){
   if(store.lists.length <= 1){
-    alert("You need at least one expense list.");
+    showFormError("You need at least one expense list.");
     return;
   }
   const list = store.lists.find(function(l){ return l.id===id; });
   if(!list) return;
-  const ok = confirm('Delete "'+list.name+'" and all its expenses? This can\'t be undone.');
-  if(!ok) return;
-  store.lists = store.lists.filter(function(l){ return l.id!==id; });
-  if(store.activeId === id){
-    store.activeId = store.lists[0].id;
-  }
-  saveData();
-  updateListPillLabel();
-  closeListSheet();
-  clearForm();
-  renderAll();
+
+  showConfirmDialog({
+    title: "Delete expense list?",
+    name: list.name,
+    body: "This removes the list and all its expenses. This can't be undone.",
+    onConfirm: function(){
+      store.lists = store.lists.filter(function(l){ return l.id!==id; });
+      if(store.activeId === id){
+        store.activeId = store.lists[0].id;
+      }
+      saveData();
+      updateListPillLabel();
+      closeListSheet();
+      clearForm();
+      renderAll();
+    }
+  });
 }
 
 /* ============ LIFF ============ */
@@ -721,9 +775,9 @@ function handleAddOrUpdate(){
   const desc = document.getElementById("descInput").value.trim();
   const amount = parseFloat(document.getElementById("amountInput").value);
 
-  if(!desc){ alert("Enter a description."); return; }
-  if(!selectedCategory){ alert("Select a category."); return; }
-  if(!amount || amount <= 0){ alert("Enter a valid amount."); return; }
+  if(!desc){ showFormError("Enter a description."); return; }
+  if(!selectedCategory){ showFormError("Select a category."); return; }
+  if(!amount || amount <= 0){ showFormError("Enter a valid amount."); return; }
 
   const dateKey = formatDateKey(selectedDate);
   const list = getActiveList();
@@ -754,7 +808,38 @@ function clearForm(){
   document.getElementById("categoryFieldLabel").textContent = "CATEGORY";
   selectedDate = new Date();
   updateDateFieldLabel();
+  hideFormError();
 }
+
+function showFormError(msg){
+  const el = document.getElementById("formError");
+  el.textContent = msg;
+  el.classList.add("show");
+}
+function hideFormError(){
+  const el = document.getElementById("formError");
+  el.classList.remove("show");
+  el.textContent = "";
+}
+
+let pendingConfirmAction = null;
+function showConfirmDialog(opts){
+  document.getElementById("confirmTitle").textContent = opts.title;
+  document.getElementById("confirmName").textContent = '"'+opts.name+'"';
+  document.getElementById("confirmBody").textContent = opts.body;
+  pendingConfirmAction = opts.onConfirm;
+  document.getElementById("confirmBackdrop").classList.add("open");
+}
+function hideConfirmDialog(){
+  document.getElementById("confirmBackdrop").classList.remove("open");
+  pendingConfirmAction = null;
+}
+document.getElementById("confirmCancelBtn").addEventListener("click", hideConfirmDialog);
+document.getElementById("confirmOkBtn").addEventListener("click", function(){
+  const action = pendingConfirmAction;
+  hideConfirmDialog();
+  if(action) action();
+});
 
 function loadIntoForm(id){
   const exp = getActiveList().expenses.find(function(x){ return x.id===id; });
